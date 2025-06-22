@@ -1009,9 +1009,9 @@
                 totalCost += remainingKwh * 57.10;
             }
 
-            // ICPT Rebate: 2 sen/kWh for usage < 600 kWh
+            // ICPT Rebate: 2 sen/kWh for usage < 601 kWh
             let icptRebateInSen = 0;
-            if (kwh < 600 && options.includeICPT) {
+            if (kwh < 601 && options.includeICPT) {
                 icptRebateInSen = kwh * 2.0;
             }
             
@@ -1096,7 +1096,7 @@
             let toggleHtml = '';
             let disclaimerHtml = '';
 
-            if (totalKwh < 600) {
+            if (totalKwh < 601) {
                 toggleHtml = `
                     <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
                         <input type="checkbox" id="incentive-toggle" checked style="transform: scale(1.2);">
@@ -1361,7 +1361,7 @@
             let toggleHtml = '';
             let disclaimerHtml = '';
 
-            if (totalKwh < 600) {
+            if (totalKwh < 601) {
                 toggleHtml = `
                     <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
                         <input type="checkbox" id="incentive-toggle" checked style="transform: scale(1.2);">
