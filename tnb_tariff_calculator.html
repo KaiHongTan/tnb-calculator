@@ -1,0 +1,1559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TNB New Tariff Calculator 2025</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+
+        .effective-date {
+            background: rgba(255,255,255,0.2);
+            padding: 8px 16px;
+            border-radius: 20px;
+            display: inline-block;
+            font-weight: 500;
+            backdrop-filter: blur(10px);
+        }
+
+        .calculator-container {
+            background: rgba(255,255,255,0.95);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .method-selector {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .method-button {
+            flex: 1;
+            min-width: 250px;
+            padding: 20px;
+            border: 2px solid #e2e8f0;
+            border-radius: 15px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .method-button:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
+        }
+
+        .method-button.active {
+            border-color: #667eea;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .method-button h3 {
+            font-size: 1.2rem;
+            margin-bottom: 8px;
+        }
+
+        .method-button p {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .input-section {
+            display: none;
+            background: #f8fafc;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+
+        .input-section.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .file-upload {
+            border: 2px dashed #cbd5e0;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .file-upload:hover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .file-upload.dragover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .file-upload input {
+            display: none;
+        }
+
+        .upload-text {
+            font-size: 1.1rem;
+            color: #64748b;
+            margin-bottom: 10px;
+        }
+
+        .upload-hint {
+            font-size: 0.9rem;
+            color: #94a3b8;
+        }
+
+        .calculate-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 18px 40px;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: block;
+            margin: 0 auto;
+            min-width: 200px;
+        }
+
+        .calculate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .calculate-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .results {
+            display: none;
+            margin-top: 40px;
+        }
+
+        .results.show {
+            display: block;
+            animation: slideUp 0.5s ease;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .result-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            border-left: 5px solid #667eea;
+        }
+
+        .result-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .breakdown-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .breakdown-item {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .breakdown-label {
+            font-size: 0.9rem;
+            color: #64748b;
+            margin-bottom: 5px;
+        }
+
+        .breakdown-value {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .total-amount {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            text-align: center;
+            padding: 25px;
+            border-radius: 15px;
+            margin-top: 20px;
+        }
+
+        .total-label {
+            font-size: 1rem;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+
+        .total-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .comparison-table th {
+            background: #f8fafc;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .savings {
+            color: #059669;
+            font-weight: 600;
+        }
+
+        .increase {
+            color: #dc2626;
+            font-weight: 600;
+        }
+
+        .info-banner {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            color: #1e40af;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e2e8f0;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .calculator-container {
+                padding: 20px;
+            }
+            
+            .method-selector {
+                flex-direction: column;
+            }
+            
+            .method-button {
+                min-width: auto;
+            }
+            
+            .breakdown-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚡ TNB New Tariff Calculator</h1>
+            <p>Calculate your electricity bills under the new tariff structure</p>
+            <div class="effective-date">Effective from July 1, 2025</div>
+            <p style="font-size: 0.9rem; margin-top: 15px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 10px;">
+                <strong>Disclaimer:</strong> This is an independent calculator for estimation purposes only. All calculations are based on publicly available tariff information and may not reflect your exact bill. For official rates and billing, please refer to Tenaga Nasional Berhad (TNB).
+            </p>
+        </div>
+
+        <div class="calculator-container">
+            <div class="method-selector">
+                <div class="method-button active" data-method="manual">
+                    <h3>📊 Manual Input</h3>
+                    <p>Enter your monthly kWh consumption manually</p>
+                </div>
+                <div class="method-button" data-method="monthly">
+                    <h3>📈 Monthly Usage File</h3>
+                    <p>Upload monthly usage data to compare old vs new tariff</p>
+                </div>
+                <div class="method-button" data-method="daily">
+                    <h3>⏰ Daily Usage Files</h3>
+                    <p>Upload daily usage data to compare General vs ToU tariff</p>
+                </div>
+            </div>
+
+            <!-- Manual Input Section -->
+            <div class="input-section active" id="manual-section">
+                <div class="info-banner">
+                    <strong>💡 Manual Calculator:</strong> Enter your monthly kWh consumption to see your bill under the new tariff structure.
+                </div>
+                
+                <div class="form-group">
+                    <label for="monthly-kwh">Monthly kWh Consumption</label>
+                    <input type="number" id="monthly-kwh" placeholder="e.g., 450" min="0" step="0.1">
+                </div>
+                
+                <div class="form-group">
+                    <label for="tariff-type">Tariff Type</label>
+                    <select id="tariff-type">
+                        <option value="general">Domestic General</option>
+                        <option value="tou">Domestic Time-of-Use (ToU)</option>
+                    </select>
+                </div>
+                
+                <div id="tou-split" style="display: none;">
+                    <div class="form-group">
+                        <label for="peak-percentage">Peak Hours Usage (%)</label>
+                        <input type="number" id="peak-percentage" placeholder="e.g., 40" min="0" max="100" value="40">
+                        <small style="color: #64748b;">Peak: 2PM-10PM on weekdays. Estimate what % of your usage occurs during peak hours.</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Monthly Usage File Section -->
+            <div class="input-section" id="monthly-section">
+                <div class="info-banner">
+                    <strong>📊 Monthly Usage Comparison:</strong> For Smart Meter users, upload the raw monthly usage CSV file downloaded from the myTNB portal to compare your bills under the old vs. new tariff structure.
+                </div>
+                
+                <div class="form-group">
+                    <label>Upload Monthly Usage CSV File</label>
+                    <div class="file-upload" id="monthly-upload">
+                        <input type="file" id="monthly-file" accept=".csv">
+                        <div class="upload-text">Click to upload or drag & drop your CSV file</div>
+                        <div class="upload-hint">This single file should contain your usage data for a 30-day period.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Daily Usage Files Section -->
+            <div class="input-section" id="daily-section">
+                <div class="info-banner">
+                    <strong>⏰ Daily Usage Analysis:</strong> For Smart Meter users, upload your raw daily usage CSV files downloaded from the myTNB portal to compare General vs. Time-of-Use tariffs with your actual hourly data.
+                </div>
+                
+                <div class="form-group">
+                    <label>Upload Daily Usage CSV Files (Multiple files for one month)</label>
+                    <div class="file-upload" id="daily-upload">
+                        <input type="file" id="daily-files" accept=".csv" multiple>
+                        <div class="upload-text">Click to upload or drag & drop multiple CSV files</div>
+                        <div class="upload-hint">For an accurate estimate, please upload a complete set of daily files for one month (e.g., 30 files for 30 days).</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Calculating your electricity bill...</p>
+            </div>
+
+            <button class="calculate-btn" id="calculate-btn">Calculate Bill</button>
+
+            <div class="results" id="results">
+                <!-- Results will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // TNB Tariff Data
+        const TNB_TARIFF = {
+            domestic_general: {
+                tier1: {
+                    limit: 1500,
+                    energy_charge: 27.03,
+                    capacity_charge: 4.55,
+                    network_charge: 12.85
+                },
+                tier2: {
+                    energy_charge: 37.03,
+                    capacity_charge: 4.55,
+                    network_charge: 12.85
+                }
+            },
+            domestic_tou: {
+                tier1: {
+                    limit: 1500,
+                    energy_charge_peak: 28.52,
+                    energy_charge_off_peak: 24.43,
+                    capacity_charge: 4.55,
+                    network_charge: 12.85
+                },
+                tier2: {
+                    energy_charge_peak: 38.52,
+                    energy_charge_off_peak: 34.43,
+                    capacity_charge: 4.55,
+                    network_charge: 12.85
+                }
+            },
+            retail_charge: 10.00,
+            ee_incentive: {
+                '1-200': -25.0,
+                '201-250': -24.5,
+                '251-300': -22.5,
+                '301-350': -21.0,
+                '351-400': -17.0,
+                '401-450': -14.5,
+                '451-500': -12.0,
+                '501-550': -10.5,
+                '551-600': -9.0,
+                '601-650': -7.5,
+                '651-700': -5.5,
+                '701-750': -4.5,
+                '751-800': -4.0,
+                '801-850': -2.5,
+                '851-900': -1.0,
+                '901-1000': -0.5
+            }
+        };
+
+        // Global variables
+        let currentMethod = 'manual';
+        let uploadedData = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeEventListeners();
+        });
+
+        function initializeEventListeners() {
+            // Method selector
+            document.querySelectorAll('.method-button').forEach(button => {
+                button.addEventListener('click', function() {
+                    switchMethod(this.dataset.method);
+                });
+            });
+
+            // Calculate button
+            document.getElementById('calculate-btn').addEventListener('click', calculateBill);
+
+            // Tariff type change
+            document.getElementById('tariff-type').addEventListener('change', function() {
+                toggleTouFields(this.value === 'tou');
+            });
+
+            // File uploads
+            setupFileUpload('monthly-upload', 'monthly-file', handleMonthlyFile);
+            setupFileUpload('daily-upload', 'daily-files', handleDailyFiles);
+        }
+
+        function switchMethod(method) {
+            // Update active button
+            document.querySelectorAll('.method-button').forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`[data-method="${method}"]`).classList.add('active');
+
+            // Show/hide sections
+            document.querySelectorAll('.input-section').forEach(section => section.classList.remove('active'));
+            document.getElementById(`${method}-section`).classList.add('active');
+
+            currentMethod = method;
+            document.getElementById('results').classList.remove('show');
+        }
+
+        function toggleTouFields(show) {
+            document.getElementById('tou-split').style.display = show ? 'block' : 'none';
+        }
+
+        function setupFileUpload(uploadId, inputId, handler) {
+            const uploadArea = document.getElementById(uploadId);
+            const fileInput = document.getElementById(inputId);
+
+            uploadArea.addEventListener('click', () => fileInput.click());
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('dragover');
+            });
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                fileInput.files = e.dataTransfer.files;
+                handler(e.dataTransfer.files);
+            });
+            fileInput.addEventListener('change', (e) => handler(e.target.files));
+        }
+
+        function handleMonthlyFile(files) {
+            if (files.length === 0) return;
+            
+            const file = files[0];
+            Papa.parse(file, {
+                header: true,
+                dynamicTyping: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    uploadedData = {
+                        type: 'monthly',
+                        data: results.data
+                    };
+                    document.querySelector('#monthly-upload .upload-text').textContent = `✅ ${file.name} uploaded successfully`;
+                }
+            });
+        }
+
+        function handleDailyFiles(files) {
+            if (files.length === 0) return;
+            
+            const fileArray = Array.from(files);
+            let processedFiles = 0;
+            const dailyData = [];
+
+            fileArray.forEach((file, index) => {
+                Papa.parse(file, {
+                    header: true,
+                    dynamicTyping: true,
+                    skipEmptyLines: true,
+                    complete: function(results) {
+                        dailyData.push({
+                            filename: file.name,
+                            data: results.data
+                        });
+                        processedFiles++;
+                        
+                        if (processedFiles === fileArray.length) {
+                            uploadedData = {
+                                type: 'daily',
+                                data: dailyData
+                            };
+                            document.querySelector('#daily-upload .upload-text').textContent = `✅ ${fileArray.length} files uploaded successfully`;
+                        }
+                    }
+                });
+            });
+        }
+
+        function calculateBill() {
+            document.getElementById('loading').classList.add('show');
+            document.getElementById('results').classList.remove('show');
+
+            setTimeout(() => {
+                let results = null;
+
+                switch (currentMethod) {
+                    case 'manual':
+                        results = calculateManualBill();
+                        break;
+                    case 'monthly':
+                        results = calculateMonthlyComparison();
+                        break;
+                    case 'daily':
+                        results = calculateDailyComparison();
+                        break;
+                }
+
+                document.getElementById('loading').classList.remove('show');
+                
+                if (results) {
+                    displayResults(results);
+                } else {
+                    alert('Please fill in all required fields or upload the necessary files.');
+                }
+            }, 1000);
+        }
+
+        function calculateManualBill() {
+            const kwhInput = document.getElementById('monthly-kwh');
+            const tariffType = document.getElementById('tariff-type').value;
+            
+            const kwh = parseFloat(kwhInput.value);
+            if (!kwh || kwh <= 0) return null;
+
+            if (tariffType === 'general') {
+                const bill = calculateGeneralTariff(kwh);
+                return {
+                    type: 'manual_general',
+                    consumption: kwh,
+                    bill: bill
+                };
+            } else {
+                const peakPercentage = parseFloat(document.getElementById('peak-percentage').value) || 40;
+                const peakKwh = kwh * (peakPercentage / 100);
+                const offPeakKwh = kwh * ((100 - peakPercentage) / 100);
+                
+                const touBill = calculateTouTariff(peakKwh, offPeakKwh);
+                const generalBill = calculateGeneralTariff(kwh);
+                
+                return {
+                    type: 'manual_tou',
+                    consumption: kwh,
+                    peakKwh: peakKwh,
+                    offPeakKwh: offPeakKwh,
+                    touBill: touBill,
+                    generalBill: generalBill,
+                    savings: generalBill.total - touBill.total
+                };
+            }
+        }
+
+        function calculateMonthlyComparison() {
+            if (!uploadedData || uploadedData.type !== 'monthly') return null;
+
+            // Parse the monthly usage data - ignore band columns, just use daily totals
+            const monthlyData = uploadedData.data.filter(row => row['Date'] !== 'Total'); // Exclude total row if present
+            
+            // Calculate daily breakdown for display
+            const dailyData = monthlyData.map(row => {
+                const dailyTotal = row[' Total'] || row['Total'] || 0;
+                return {
+                    date: row['Date'],
+                    total: dailyTotal,
+                    newBill: calculateGeneralTariff(dailyTotal),
+                    oldBill: calculateOldTariff(dailyTotal)
+                };
+            });
+
+            // Calculate total kWh by summing daily usage
+            const totalMonthlyKwh = dailyData.reduce((sum, day) => sum + day.total, 0);
+            
+            // Calculate monthly bills using the total consumption
+            const monthlyOldBill = calculateOldTariff(totalMonthlyKwh);
+            const monthlyNewBill = calculateGeneralTariff(totalMonthlyKwh);
+
+            return {
+                type: 'monthly_comparison',
+                data: dailyData,
+                monthlyTotals: {
+                    totalKwh: totalMonthlyKwh,
+                    oldBill: monthlyOldBill,
+                    newBill: monthlyNewBill,
+                    savings: monthlyOldBill.total - monthlyNewBill.total
+                }
+            };
+        }
+
+        function calculateDailyComparison() {
+            if (!uploadedData || uploadedData.type !== 'daily') return null;
+
+            const dailyAnalysis = uploadedData.data.map(dayData => {
+                // Filter out the "Total" summary row and any rows without a valid date
+                const cleanData = dayData.data.filter(row => row.Date && !String(row.Date).includes('Total'));
+
+                const totalKwh = cleanData.reduce((sum, row) => {
+                    return sum + (row[' Total'] || row['Total'] || 0);
+                }, 0);
+
+                // Determine date and if it's a weekday from the first row of data
+                let isWeekday = true; // Default assumption
+                let displayDate = 'Unknown';
+                const dateStr = cleanData[0]?.Date?.split(' ')[0];
+                
+                if (dateStr) {
+                    const dateParts = dateStr.match(/(\d{1,2})[-.\/](\d{1,2})[-.\/](\d{4})/);
+                    if (dateParts) {
+                        displayDate = `${dateParts[1]}/${dateParts[2]}/${dateParts[3]}`;
+                        const date = new Date(dateParts[3], dateParts[2] - 1, dateParts[1]);
+                        const dayOfWeek = date.getDay();
+                        isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5; // Monday = 1, Friday = 5
+                    }
+                }
+
+                const { peakKwh, offPeakKwh } = calculatePeakOffPeakUsage(cleanData, isWeekday);
+                
+                return {
+                    filename: dayData.filename,
+                    date: displayDate,
+                    isWeekday: isWeekday,
+                    totalKwh: totalKwh,
+                    peakKwh: peakKwh,
+                    offPeakKwh: offPeakKwh,
+                    generalBill: calculateGeneralTariff(totalKwh),
+                    touBill: calculateTouTariff(peakKwh, offPeakKwh)
+                };
+            });
+
+            // Calculate monthly totals
+            const monthlyTotals = dailyAnalysis.reduce((acc, day) => {
+                acc.totalKwh += day.totalKwh;
+                acc.peakKwh += day.peakKwh;
+                acc.offPeakKwh += day.offPeakKwh;
+                return acc;
+            }, {
+                totalKwh: 0,
+                peakKwh: 0,
+                offPeakKwh: 0
+            });
+
+            // Recalculate monthly bills properly
+            monthlyTotals.generalBill = calculateGeneralTariff(monthlyTotals.totalKwh);
+            monthlyTotals.touBill = calculateTouTariff(monthlyTotals.peakKwh, monthlyTotals.offPeakKwh);
+            monthlyTotals.savings = monthlyTotals.generalBill.total - monthlyTotals.touBill.total;
+
+            return {
+                type: 'daily_comparison',
+                dailyData: dailyAnalysis,
+                monthlyTotals: monthlyTotals
+            };
+        }
+
+        function calculatePeakOffPeakUsage(dailyData, isWeekday) {
+            let peakKwh = 0;
+            let offPeakKwh = 0;
+
+            dailyData.forEach(row => {
+                const timePart = row.Date?.split(' ')[1];
+                const hour = timePart ? (parseInt(timePart.split(':')[0]) || 0) : 0;
+                const usage = row[' Total'] || row['Total'] || 0;
+
+                if (isWeekday && hour >= 14 && hour < 22) {
+                    // Peak hours: 2PM-10PM on weekdays
+                    peakKwh += usage;
+                } else {
+                    // Off-peak: all other hours
+                    offPeakKwh += usage;
+                }
+            });
+
+            return { peakKwh, offPeakKwh };
+        }
+
+        function calculateGeneralTariff(kwh, options = { includeEE: true }) {
+            const tariff = TNB_TARIFF.domestic_general;
+            let energyCharge = 0;
+            
+            if (kwh <= tariff.tier1.limit) {
+                energyCharge = kwh * tariff.tier1.energy_charge;
+            } else {
+                energyCharge = (tariff.tier1.limit * tariff.tier1.energy_charge) + 
+                              ((kwh - tariff.tier1.limit) * tariff.tier2.energy_charge);
+            }
+
+            const capacityCharge = kwh * (kwh <= tariff.tier1.limit ? tariff.tier1.capacity_charge : tariff.tier2.capacity_charge);
+            const networkCharge = kwh * (kwh <= tariff.tier1.limit ? tariff.tier1.network_charge : tariff.tier2.network_charge);
+            const retailCharge = kwh <= 600 ? 0 : TNB_TARIFF.retail_charge;
+            const eeIncentive = options.includeEE ? calculateEEIncentive(kwh) : 0;
+            
+            const subtotal = (energyCharge + capacityCharge + networkCharge + (retailCharge * 100) + eeIncentive) / 100; // Convert sen to RM
+            const renewableEnergyFund = kwh <= 300 ? 0 : subtotal * 0.016;
+            
+            // Service Tax calculation: 8% on the energy charge for consumption above 600 kWh
+            let serviceTax = 0;
+            if (kwh > 600) {
+                const excessKwh = kwh - 600;
+                let taxableEnergyCharge = 0;
+
+                if (kwh <= tariff.tier1.limit) { // kwh <= 1500, all excess is in Tier 1
+                    taxableEnergyCharge = excessKwh * tariff.tier1.energy_charge;
+                } else { // kwh > 1500, excess spans Tier 1 and Tier 2
+                    const tier1Limit = tariff.tier1.limit;
+                    const kwhInTier1Above600 = tier1Limit - 600;
+                    const kwhInTier2 = kwh - tier1Limit;
+                    
+                    taxableEnergyCharge = (kwhInTier1Above600 * tariff.tier1.energy_charge) + (kwhInTier2 * tariff.tier2.energy_charge);
+                }
+                serviceTax = (taxableEnergyCharge / 100) * 0.08;
+            }
+            
+            const total = subtotal + renewableEnergyFund + serviceTax;
+
+            return {
+                kwh: kwh,
+                energyCharge: energyCharge / 100,
+                capacityCharge: capacityCharge / 100,
+                networkCharge: networkCharge / 100,
+                retailCharge: retailCharge,
+                eeIncentive: eeIncentive / 100,
+                subtotal: subtotal,
+                renewableEnergyFund: renewableEnergyFund,
+                serviceTax: serviceTax,
+                total: total
+            };
+        }
+
+        function calculateTouTariff(peakKwh, offPeakKwh, options = { includeEE: true }) {
+            const totalKwh = peakKwh + offPeakKwh;
+            const tariff = TNB_TARIFF.domestic_tou;
+            
+            let energyCharge = 0;
+            
+            if (totalKwh <= tariff.tier1.limit) {
+                energyCharge = (peakKwh * tariff.tier1.energy_charge_peak) + 
+                              (offPeakKwh * tariff.tier1.energy_charge_off_peak);
+            } else {
+                // Calculate tier 1 portion
+                const tier1Peak = Math.min(peakKwh, tariff.tier1.limit);
+                const tier1OffPeak = Math.min(offPeakKwh, tariff.tier1.limit - tier1Peak);
+                
+                // Calculate tier 2 portion
+                const tier2Peak = peakKwh - tier1Peak;
+                const tier2OffPeak = offPeakKwh - tier1OffPeak;
+                
+                energyCharge = (tier1Peak * tariff.tier1.energy_charge_peak) +
+                              (tier1OffPeak * tariff.tier1.energy_charge_off_peak) +
+                              (tier2Peak * tariff.tier2.energy_charge_peak) +
+                              (tier2OffPeak * tariff.tier2.energy_charge_off_peak);
+            }
+
+            const capacityCharge = totalKwh * (totalKwh <= tariff.tier1.limit ? tariff.tier1.capacity_charge : tariff.tier2.capacity_charge);
+            const networkCharge = totalKwh * (totalKwh <= tariff.tier1.limit ? tariff.tier1.network_charge : tariff.tier2.network_charge);
+            const retailCharge = totalKwh <= 600 ? 0 : TNB_TARIFF.retail_charge;
+            const eeIncentive = options.includeEE ? calculateEEIncentive(totalKwh) : 0;
+            
+            const subtotal = (energyCharge + capacityCharge + networkCharge + (retailCharge * 100) + eeIncentive) / 100;
+            const renewableEnergyFund = totalKwh <= 300 ? 0 : subtotal * 0.016;
+            
+            // Service Tax calculation: 8% on the energy charge for consumption above 600 kWh
+            let serviceTax = 0;
+            if (totalKwh > 600) {
+                // Total energy charge is already calculated in 'energyCharge' (in sen)
+                // Now, calculate energy charge for the first 600 kWh to subtract it.
+                // The first 600 kWh are within tier 1.
+                const peakRatio = totalKwh > 0 ? peakKwh / totalKwh : 0;
+                
+                const first600_peakKwh = 600 * peakRatio;
+                const first600_offPeakKwh = 600 * (1 - peakRatio);
+                
+                const energyChargeFor600kwh = (first600_peakKwh * tariff.tier1.energy_charge_peak) +
+                                             (first600_offPeakKwh * tariff.tier1.energy_charge_off_peak);
+                
+                const taxableEnergyCharge = energyCharge - energyChargeFor600kwh;
+                serviceTax = (taxableEnergyCharge / 100) * 0.08;
+            }
+            
+            const total = subtotal + renewableEnergyFund + serviceTax;
+
+            return {
+                totalKwh: totalKwh,
+                peakKwh: peakKwh,
+                offPeakKwh: offPeakKwh,
+                energyCharge: energyCharge / 100,
+                capacityCharge: capacityCharge / 100,
+                networkCharge: networkCharge / 100,
+                retailCharge: retailCharge,
+                eeIncentive: eeIncentive / 100,
+                subtotal: subtotal,
+                renewableEnergyFund: renewableEnergyFund,
+                serviceTax: serviceTax,
+                total: total
+            };
+        }
+
+        function calculateEEIncentive(kwh) {
+            if (kwh > 1000) return 0;
+            
+            const bands = Object.keys(TNB_TARIFF.ee_incentive);
+            for (let band of bands) {
+                const [min, max] = band.split('-').map(Number);
+                if (kwh >= min && kwh <= max) {
+                    return kwh * TNB_TARIFF.ee_incentive[band];
+                }
+            }
+            return 0;
+        }
+
+        function calculateOldTariff(kwh) {
+            // Progressive old tariff calculation (Tariff A - Domestic Tariff)
+            let totalCost = 0;
+            let remainingKwh = kwh;
+            
+            // Tier 1: First 200 kWh at 21.80 sen/kWh
+            if (remainingKwh > 0) {
+                const tier1Kwh = Math.min(remainingKwh, 200);
+                totalCost += tier1Kwh * 21.80;
+                remainingKwh -= tier1Kwh;
+            }
+            
+            // Tier 2: Next 100 kWh (201-300) at 33.40 sen/kWh
+            if (remainingKwh > 0) {
+                const tier2Kwh = Math.min(remainingKwh, 100);
+                totalCost += tier2Kwh * 33.40;
+                remainingKwh -= tier2Kwh;
+            }
+            
+            // Tier 3: Next 300 kWh (301-600) at 51.60 sen/kWh
+            if (remainingKwh > 0) {
+                const tier3Kwh = Math.min(remainingKwh, 300);
+                totalCost += tier3Kwh * 51.60;
+                remainingKwh -= tier3Kwh;
+            }
+            
+            // Tier 4: Next 300 kWh (601-900) at 54.60 sen/kWh
+            if (remainingKwh > 0) {
+                const tier4Kwh = Math.min(remainingKwh, 300);
+                totalCost += tier4Kwh * 54.60;
+                remainingKwh -= tier4Kwh;
+            }
+            
+            // Tier 5: Remaining kWh (901+) at 57.10 sen/kWh
+            if (remainingKwh > 0) {
+                totalCost += remainingKwh * 57.10;
+            }
+            
+            // Convert from sen to RM
+            const energyCost = totalCost / 100;
+            
+            // Service Tax calculation (8% on consumption above 600 kWh)
+            // Based on TNB's calculation: ST applies to the portion above 600 kWh
+            let serviceTax = 0;
+            if (kwh > 600) {
+                // Calculate cost for consumption above 600 kWh
+                const excessKwh = kwh - 600;
+                let excessCost = 0;
+                let remainingExcess = excessKwh;
+                
+                // Calculate cost for 601-900 kWh at 54.60 sen/kWh
+                if (remainingExcess > 0) {
+                    const tier4Excess = Math.min(remainingExcess, 300);
+                    excessCost += tier4Excess * 54.60;
+                    remainingExcess -= tier4Excess;
+                }
+                
+                // Calculate cost for 901+ kWh at 57.10 sen/kWh
+                if (remainingExcess > 0) {
+                    excessCost += remainingExcess * 57.10;
+                }
+                
+                // Apply 8% ST to the excess cost
+                serviceTax = (excessCost / 100) * 0.08;
+            }
+            
+            const total = energyCost + serviceTax;
+            
+            return {
+                total: total,
+                kwh: kwh,
+                energyCost: energyCost,
+                serviceTax: serviceTax,
+                breakdown: {
+                    baseEnergyCharge: energyCost,
+                    serviceTax: serviceTax
+                }
+            };
+        }
+
+        function displayResults(results) {
+            const resultsDiv = document.getElementById('results');
+            
+            switch (results.type) {
+                case 'manual_general':
+                    resultsDiv.innerHTML = generateManualGeneralResults(results);
+                    setupManualGeneralToggle(results);
+                    break;
+                case 'manual_tou':
+                    resultsDiv.innerHTML = generateManualTouResults(results);
+                    setupManualTouToggle(results);
+                    break;
+                case 'monthly_comparison':
+                    resultsDiv.innerHTML = generateMonthlyComparisonResults(results);
+                    setupMonthlyComparisonToggle(results);
+                    break;
+                case 'daily_comparison':
+                    resultsDiv.innerHTML = generateDailyComparisonResults(results);
+                    setupDailyComparisonToggle(results);
+                    break;
+            }
+            
+            resultsDiv.classList.add('show');
+        }
+
+        function generateManualGeneralResults(results) {
+            const bill = results.bill;
+            return `
+                <div class="result-card">
+                    <div class="result-title">
+                        💡 Your Monthly Bill - Domestic General Tariff
+                    </div>
+                    
+                    <div class="breakdown-grid">
+                        <div class="breakdown-item">
+                            <div class="breakdown-label">Consumption</div>
+                            <div class="breakdown-value">${results.consumption.toFixed(1)} kWh</div>
+                        </div>
+                        <div class="breakdown-item">
+                            <div class="breakdown-label">Energy Charge</div>
+                            <div class="breakdown-value">RM ${bill.energyCharge.toFixed(2)}</div>
+                        </div>
+                        <div class="breakdown-item">
+                            <div class="breakdown-label">Capacity Charge</div>
+                            <div class="breakdown-value">RM ${bill.capacityCharge.toFixed(2)}</div>
+                        </div>
+                        <div class="breakdown-item">
+                            <div class="breakdown-label">Network Charge</div>
+                            <div class="breakdown-value">RM ${bill.networkCharge.toFixed(2)}</div>
+                        </div>
+                        <div class="breakdown-item">
+                            <div class="breakdown-label">Retail Charge</div>
+                            <div class="breakdown-value">RM ${bill.retailCharge.toFixed(2)}</div>
+                        </div>
+                        <div class="breakdown-item">
+                            <div class="breakdown-label">EE Incentive</div>
+                            <div class="breakdown-value ${bill.eeIncentive < 0 ? 'savings' : ''}" id="manual-ee-incentive">RM ${bill.eeIncentive.toFixed(2)}</div>
+                        </div>
+                        <div class="breakdown-item">
+                            <div class="breakdown-label">RE Fund (1.6%)</div>
+                            <div class="breakdown-value" id="manual-re-fund">RM ${bill.renewableEnergyFund.toFixed(2)}</div>
+                        </div>
+                        <div class="breakdown-item">
+                            <div class="breakdown-label">Service Tax (8% on excess)</div>
+                            <div class="breakdown-value" id="manual-service-tax">RM ${bill.serviceTax.toFixed(2)}</div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 20px; padding: 15px; background: rgba(59, 130, 246, 0.1); border-radius: 8px;">
+                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                            <input type="checkbox" id="manual-ee-toggle" checked style="transform: scale(1.2);">
+                            <span style="font-size: 0.9rem; color: #1e40af;">
+                                <strong>Include Energy Efficiency Incentive</strong><br>
+                                <small style="color: #64748b;">* EE Incentive rates are estimated. Uncheck to see the bill without this incentive. For official rates, please refer to TNB.</small>
+                            </span>
+                        </label>
+                    </div>
+
+                    <div class="total-amount" id="manual-total-amount">
+                        <div class="total-label">Total Monthly Bill</div>
+                        <div class="total-value">RM ${bill.total.toFixed(2)}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function generateManualTouResults(results) {
+            const savings = results.savings;
+            const savingsClass = savings > 0 ? 'savings' : 'increase';
+            const savingsText = savings > 0 ? 'Savings' : 'Additional Cost';
+            
+            return `
+                <div class="result-card">
+                    <div class="result-title">
+                        ⏰ Tariff Comparison - General vs Time-of-Use
+                    </div>
+                    
+                    <table class="comparison-table">
+                        <thead>
+                            <tr>
+                                <th>Tariff Type</th>
+                                <th>Peak Usage</th>
+                                <th>Off-Peak Usage</th>
+                                <th>Monthly Bill</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Domestic General</strong></td>
+                                <td>-</td>
+                                <td>-</td>
+                                <td id="manual-tou-general-bill"><strong>RM ${results.generalBill.total.toFixed(2)}</strong></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Time-of-Use (ToU)</strong></td>
+                                <td>${results.peakKwh.toFixed(1)} kWh</td>
+                                <td>${results.offPeakKwh.toFixed(1)} kWh</td>
+                                <td id="manual-tou-tou-bill"><strong>RM ${results.touBill.total.toFixed(2)}</strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div style="margin-top: 20px; padding: 15px; background: rgba(59, 130, 246, 0.1); border-radius: 8px;">
+                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                            <input type="checkbox" id="manual-tou-ee-toggle" checked style="transform: scale(1.2);">
+                            <span style="font-size: 0.9rem; color: #1e40af;">
+                                <strong>Include Energy Efficiency Incentive</strong><br>
+                                <small style="color: #64748b;">* EE Incentive rates are estimated. Uncheck to see the bill without this incentive. For official rates, please refer to TNB.</small>
+                            </span>
+                        </label>
+                    </div>
+                    
+                    <div class="total-amount" id="manual-tou-savings">
+                        <div class="total-label">${savingsText} with ToU Tariff</div>
+                        <div class="total-value ${savingsClass}">RM ${Math.abs(savings).toFixed(2)}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function setupManualGeneralToggle(results) {
+            const toggle = document.getElementById('manual-ee-toggle');
+            if (!toggle) return;
+
+            toggle.addEventListener('change', function() {
+                const includeEE = this.checked;
+                const kwh = results.consumption;
+
+                const newBill = calculateGeneralTariff(kwh, { includeEE: includeEE });
+
+                const eeDisplay = document.getElementById('manual-ee-incentive');
+                eeDisplay.textContent = `RM ${newBill.eeIncentive.toFixed(2)}`;
+                eeDisplay.className = newBill.eeIncentive < 0 ? 'breakdown-value savings' : 'breakdown-value';
+
+                document.getElementById('manual-re-fund').textContent = `RM ${newBill.renewableEnergyFund.toFixed(2)}`;
+                document.getElementById('manual-service-tax').textContent = `RM ${newBill.serviceTax.toFixed(2)}`;
+                
+                const totalAmountDiv = document.getElementById('manual-total-amount');
+                totalAmountDiv.innerHTML = `
+                    <div class="total-label">Total Monthly Bill</div>
+                    <div class="total-value">RM ${newBill.total.toFixed(2)}</div>
+                `;
+            });
+        }
+
+        function setupManualTouToggle(results) {
+            const toggle = document.getElementById('manual-tou-ee-toggle');
+            if (!toggle) return;
+
+            toggle.addEventListener('change', function() {
+                const includeEE = this.checked;
+                
+                // Recalculate both bills
+                const newGeneralBill = calculateGeneralTariff(results.consumption, { includeEE });
+                const newTouBill = calculateTouTariff(results.peakKwh, results.offPeakKwh, { includeEE });
+                const newSavings = newGeneralBill.total - newTouBill.total;
+
+                // Update table
+                document.getElementById('manual-tou-general-bill').innerHTML = `<strong>RM ${newGeneralBill.total.toFixed(2)}</strong>`;
+                document.getElementById('manual-tou-tou-bill').innerHTML = `<strong>RM ${newTouBill.total.toFixed(2)}</strong>`;
+
+                // Update savings display
+                const savingsClass = newSavings > 0 ? 'savings' : 'increase';
+                const savingsText = newSavings > 0 ? 'Savings' : 'Additional Cost';
+                const savingsDisplay = document.getElementById('manual-tou-savings');
+                
+                savingsDisplay.innerHTML = `
+                    <div class="total-label">${savingsText} with ToU Tariff</div>
+                    <div class="total-value ${savingsClass}">RM ${Math.abs(newSavings).toFixed(2)}</div>
+                `;
+            });
+        }
+
+        function setupMonthlyComparisonToggle(results) {
+            const toggle = document.getElementById('exclude-ee-toggle');
+            if (!toggle) return;
+
+            toggle.addEventListener('change', function() {
+                const includeEE = this.checked;
+                const totalKwh = results.monthlyTotals.totalKwh;
+                const oldBillTotal = results.monthlyTotals.oldBill.total;
+
+                // Recalculate the new bill based on the toggle state
+                const newBill = calculateGeneralTariff(totalKwh, { includeEE });
+
+                // Update the display with new values
+                document.getElementById('new-tariff-display').textContent = `RM ${newBill.total.toFixed(2)}`;
+                
+                // Update breakdown
+                document.getElementById('new-energy-charge').textContent = `RM ${newBill.energyCharge.toFixed(2)}`;
+                document.getElementById('new-capacity-charge').textContent = `RM ${newBill.capacityCharge.toFixed(2)}`;
+                document.getElementById('new-network-charge').textContent = `RM ${newBill.networkCharge.toFixed(2)}`;
+                document.getElementById('new-retail-charge').textContent = `RM ${newBill.retailCharge.toFixed(2)}`;
+                const eeDisplay = document.getElementById('new-ee-incentive');
+                eeDisplay.textContent = `RM ${newBill.eeIncentive.toFixed(2)}`;
+                eeDisplay.className = newBill.eeIncentive < 0 ? 'breakdown-value savings' : 'breakdown-value';
+                document.getElementById('new-re-fund').textContent = `RM ${newBill.renewableEnergyFund.toFixed(2)}`;
+                document.getElementById('new-service-tax').textContent = `RM ${newBill.serviceTax.toFixed(2)}`;
+
+                // Update total savings
+                const savings = oldBillTotal - newBill.total;
+                const savingsClass = savings > 0 ? 'savings' : 'increase';
+                const savingsText = savings > 0 ? 'Total Monthly Savings' : 'Additional Monthly Cost';
+                const savingsDisplay = document.getElementById('savings-display');
+                
+                savingsDisplay.innerHTML = `
+                    <div class="total-label">${savingsText}</div>
+                    <div class="total-value ${savingsClass}">RM ${Math.abs(savings).toFixed(2)}</div>
+                `;
+            });
+        }
+
+        function generateMonthlyComparisonResults(results) {
+            const tableRows = results.data.map(month => {
+                const savings = month.oldBill.total - month.newBill.total;
+                const savingsClass = savings > 0 ? 'savings' : 'increase';
+                return `
+                    <tr>
+                        <td>${month.date}</td>
+                        <td>${month.total.toFixed(1)} kWh</td>
+                        <td>RM ${month.oldBill.total.toFixed(2)}</td>
+                        <td>RM ${month.newBill.total.toFixed(2)}</td>
+                        <td class="${savingsClass}">${savings > 0 ? '+' : ''}RM ${savings.toFixed(2)}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            // Initial calculation with EE incentive
+            const newBill = results.monthlyTotals.newBill;
+            const totalSavings = results.monthlyTotals.savings;
+            const savingsClass = totalSavings > 0 ? 'savings' : 'increase';
+            const savingsText = totalSavings > 0 ? 'Total Monthly Savings' : 'Additional Monthly Cost';
+            
+            return `
+                <div class="result-card">
+                    <div class="result-title">
+                        📊 30-Day Period Comparison - Old vs New Tariff Structure
+                    </div>
+                    
+                    <div class="breakdown-grid">
+                        <div class="breakdown-item">
+                            <div class="breakdown-label">Total 30-Day Usage</div>
+                            <div class="breakdown-value">${results.monthlyTotals.totalKwh.toFixed(1)} kWh</div>
+                        </div>
+                        <div class="breakdown-item">
+                            <div class="breakdown-label">Old Tariff (Progressive)</div>
+                            <div class="breakdown-value">RM ${results.monthlyTotals.oldBill.total.toFixed(2)}</div>
+                        </div>
+                        <div class="breakdown-item">
+                            <div class="breakdown-label">New Tariff (2-Tier)</div>
+                            <div class="breakdown-value" id="new-tariff-display">RM ${newBill.total.toFixed(2)}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="result-card" style="background: #f8fafc; margin: 20px 0;">
+                        <h4 style="margin-bottom: 15px; color: #374151;">New Tariff Bill Breakdown</h4>
+                        
+                        <div class="breakdown-grid">
+                            <div class="breakdown-item">
+                                <div class="breakdown-label">Energy Charge</div>
+                                <div class="breakdown-value" id="new-energy-charge">RM ${newBill.energyCharge.toFixed(2)}</div>
+                            </div>
+                            <div class="breakdown-item">
+                                <div class="breakdown-label">Capacity Charge</div>
+                                <div class="breakdown-value" id="new-capacity-charge">RM ${newBill.capacityCharge.toFixed(2)}</div>
+                            </div>
+                            <div class="breakdown-item">
+                                <div class="breakdown-label">Network Charge</div>
+                                <div class="breakdown-value" id="new-network-charge">RM ${newBill.networkCharge.toFixed(2)}</div>
+                            </div>
+                            <div class="breakdown-item">
+                                <div class="breakdown-label">Retail Charge</div>
+                                <div class="breakdown-value" id="new-retail-charge">RM ${newBill.retailCharge.toFixed(2)}</div>
+                            </div>
+                            <div class="breakdown-item">
+                                <div class="breakdown-label">
+                                    EE Incentive (Est.) 
+                                    <span style="font-size: 0.8rem; color: #64748b;">*</span>
+                                </div>
+                                <div class="breakdown-value ${newBill.eeIncentive < 0 ? 'savings' : ''}" id="new-ee-incentive">RM ${newBill.eeIncentive.toFixed(2)}</div>
+                            </div>
+                            <div class="breakdown-item">
+                                <div class="breakdown-label">RE Fund (1.6%)</div>
+                                <div class="breakdown-value" id="new-re-fund">RM ${newBill.renewableEnergyFund.toFixed(2)}</div>
+                            </div>
+                            <div class="breakdown-item">
+                                <div class="breakdown-label">Service Tax (8%)</div>
+                                <div class="breakdown-value" id="new-service-tax">RM ${newBill.serviceTax.toFixed(2)}</div>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-top: 20px; padding: 15px; background: rgba(59, 130, 246, 0.1); border-radius: 8px;">
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                                <input type="checkbox" id="exclude-ee-toggle" checked style="transform: scale(1.2);">
+                                <span style="font-size: 0.9rem; color: #1e40af;">
+                                    <strong>Include Energy Efficiency Incentive</strong><br>
+                                    <small style="color: #64748b;">* EE Incentive rates are estimated based on the new tariff structure and are subject to change. Uncheck to see the bill without this incentive. For official rates, please refer to TNB.</small>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="total-amount" id="savings-display">
+                        <div class="total-label">${savingsText}</div>
+                        <div class="total-value ${savingsClass}">RM ${Math.abs(totalSavings).toFixed(2)}</div>
+                    </div>
+                </div>
+                
+                <div class="result-card">
+                    <div class="result-title">
+                        📅 Daily Usage Breakdown
+                    </div>
+                    <table class="comparison-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Usage (kWh)</th>
+                                <th>Old Tariff (Daily)</th>
+                                <th>New Tariff (Daily)</th>
+                                <th>Daily Difference</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${tableRows}
+                        </tbody>
+                    </table>
+                    <p style="font-size: 0.9rem; color: #64748b; margin-top: 15px;">
+                        <strong>Note:</strong> The monthly total bill is calculated based on the total consumption over the period, applying the tariff tiers correctly. The daily bill figures are provided for reference only.
+                    </p>
+                </div>
+            `;
+        }
+
+        function generateDailyComparisonResults(results) {
+            const monthlyTotals = results.monthlyTotals;
+            const savings = monthlyTotals.savings;
+            const savingsClass = savings > 0 ? 'savings' : 'increase';
+            const savingsText = savings > 0 ? 'Savings' : 'Additional Cost';
+
+            return `
+                <div class="result-card">
+                    <div class="result-title">
+                        📈 Monthly Summary - General vs Time-of-Use Tariff
+                    </div>
+                    
+                    <div class="breakdown-grid">
+                        <div class="breakdown-item">
+                            <div class="breakdown-label">Total Usage</div>
+                            <div class="breakdown-value">${monthlyTotals.totalKwh.toFixed(1)} kWh</div>
+                        </div>
+                        <div class="breakdown-item">
+                            <div class="breakdown-label">Peak Usage</div>
+                            <div class="breakdown-value">${monthlyTotals.peakKwh.toFixed(1)} kWh</div>
+                        </div>
+                        <div class="breakdown-item">
+                            <div class="breakdown-label">Off-Peak Usage</div>
+                            <div class="breakdown-value">${monthlyTotals.offPeakKwh.toFixed(1)} kWh</div>
+                        </div>
+                        <div class="breakdown-item">
+                            <div class="breakdown-label">Peak Usage %</div>
+                            <div class="breakdown-value">${((monthlyTotals.peakKwh / monthlyTotals.totalKwh) * 100).toFixed(1)}%</div>
+                        </div>
+                    </div>
+                    
+                    <table class="comparison-table">
+                        <thead>
+                            <tr>
+                                <th>Tariff Type</th>
+                                <th>Monthly Bill</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Domestic General</strong></td>
+                                <td id="daily-general-bill-total"><strong>RM ${monthlyTotals.generalBill.total.toFixed(2)}</strong></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Time-of-Use (ToU)</strong></td>
+                                <td id="daily-tou-bill-total"><strong>RM ${monthlyTotals.touBill.total.toFixed(2)}</strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    <div style="margin-top: 20px; padding: 15px; background: rgba(59, 130, 246, 0.1); border-radius: 8px;">
+                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                            <input type="checkbox" id="daily-ee-toggle" checked style="transform: scale(1.2);">
+                            <span style="font-size: 0.9rem; color: #1e40af;">
+                                <strong>Include Energy Efficiency Incentive</strong><br>
+                                <small style="color: #64748b;">* EE Incentive rates are estimated. Uncheck to see the bill without this incentive. For official rates, please refer to TNB.</small>
+                            </span>
+                        </label>
+                    </div>
+
+                    <div class="total-amount" id="daily-savings-display">
+                        <div class="total-label">${savingsText} with ToU Tariff</div>
+                        <div class="total-value ${savingsClass}">RM ${Math.abs(savings).toFixed(2)}</div>
+                    </div>
+                </div>
+                
+                <div class="result-card">
+                    <div class="result-title">
+                        📅 Daily Breakdown
+                    </div>
+                    
+                    <table class="comparison-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Day Type</th>
+                                <th>Total (kWh)</th>
+                                <th>Peak (kWh)</th>
+                                <th>General Bill</th>
+                                <th>ToU Bill</th>
+                                <th>Difference</th>
+                            </tr>
+                        </thead>
+                        <tbody id="daily-comparison-table-body">
+                            ${results.dailyData.map(day => {
+                                const dailySavings = day.generalBill.total - day.touBill.total;
+                                const dailySavingsClass = dailySavings > 0 ? 'savings' : 'increase';
+                                return `
+                                    <tr>
+                                        <td>${day.date}</td>
+                                        <td>${day.isWeekday ? 'Weekday' : 'Weekend'}</td>
+                                        <td>${day.totalKwh.toFixed(2)}</td>
+                                        <td>${day.peakKwh.toFixed(2)}</td>
+                                        <td>RM ${day.generalBill.total.toFixed(2)}</td>
+                                        <td>RM ${day.touBill.total.toFixed(2)}</td>
+                                        <td class="${dailySavingsClass}">${dailySavings > 0 ? '+' : ''}RM ${dailySavings.toFixed(2)}</td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                    <p style="font-size: 0.9rem; color: #64748b; margin-top: 15px;">
+                        <strong>Note:</strong> The monthly total bill is calculated based on the total monthly consumption, applying the tariff tiers correctly. The daily bill figures in the breakdown are for reference only and do not reflect the progressive nature of the monthly bill calculation.
+                    </p>
+                </div>
+            `;
+        }
+
+        function setupDailyComparisonToggle(results) {
+            const toggle = document.getElementById('daily-ee-toggle');
+            if (!toggle) return;
+
+            toggle.addEventListener('change', function() {
+                const includeEE = this.checked;
+                const totals = results.monthlyTotals;
+
+                const newGeneralBill = calculateGeneralTariff(totals.totalKwh, { includeEE });
+                const newTouBill = calculateTouTariff(totals.peakKwh, totals.offPeakKwh, { includeEE });
+                const newSavings = newGeneralBill.total - newTouBill.total;
+
+                document.getElementById('daily-general-bill-total').innerHTML = `<strong>RM ${newGeneralBill.total.toFixed(2)}</strong>`;
+                document.getElementById('daily-tou-bill-total').innerHTML = `<strong>RM ${newTouBill.total.toFixed(2)}</strong>`;
+                
+                const savingsClass = newSavings > 0 ? 'savings' : 'increase';
+                const savingsText = newSavings > 0 ? 'Savings' : 'Additional Cost';
+                const savingsDisplay = document.getElementById('daily-savings-display');
+                
+                savingsDisplay.innerHTML = `
+                    <div class="total-label">${savingsText} with ToU Tariff</div>
+                    <div class="total-value ${savingsClass}">RM ${Math.abs(newSavings).toFixed(2)}</div>
+                `;
+
+                // Re-render the daily breakdown table
+                const tableBody = document.getElementById('daily-comparison-table-body');
+                const newTableRows = results.dailyData.map(day => {
+                    const dailyGeneralBill = calculateGeneralTariff(day.totalKwh, { includeEE });
+                    const dailyTouBill = calculateTouTariff(day.peakKwh, day.offPeakKwh, { includeEE });
+                    const dailySavings = dailyGeneralBill.total - dailyTouBill.total;
+                    const dailySavingsClass = dailySavings > 0 ? 'savings' : 'increase';
+                    return `
+                        <tr>
+                            <td>${day.date}</td>
+                            <td>${day.isWeekday ? 'Weekday' : 'Weekend'}</td>
+                            <td>${day.totalKwh.toFixed(2)}</td>
+                            <td>${day.peakKwh.toFixed(2)}</td>
+                            <td>RM ${dailyGeneralBill.total.toFixed(2)}</td>
+                            <td>RM ${dailyTouBill.total.toFixed(2)}</td>
+                            <td class="${dailySavingsClass}">${dailySavings > 0 ? '+' : ''}RM ${dailySavings.toFixed(2)}</td>
+                        </tr>
+                    `;
+                }).join('');
+                tableBody.innerHTML = newTableRows;
+            });
+        }
+    </script>
+</body>
+</html>
+                
+                
