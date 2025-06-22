@@ -558,6 +558,9 @@
             // File uploads
             setupFileUpload('monthly-upload', 'monthly-file', handleMonthlyFile);
             setupFileUpload('daily-upload', 'daily-files', handleDailyFiles);
+
+            // Check initial state of tariff type dropdown on page load to handle refreshes
+            toggleTouFields(document.getElementById('tariff-type').value === 'tou');
         }
 
         function switchMethod(method) {
