@@ -846,8 +846,7 @@
             if (kwh <= tariff.tier1.limit) {
                 energyCharge = kwh * tariff.tier1.energy_charge;
             } else {
-                energyCharge = (tariff.tier1.limit * tariff.tier1.energy_charge) + 
-                              ((kwh - tariff.tier1.limit) * tariff.tier2.energy_charge);
+                energyCharge = kwh * tariff.tier2.energy_charge;
             }
 
             const capacityCharge = kwh * (kwh <= tariff.tier1.limit ? tariff.tier1.capacity_charge : tariff.tier2.capacity_charge);
@@ -864,14 +863,10 @@
                 const excessKwh = kwh - 600;
                 let taxableEnergyCharge = 0;
 
-                if (kwh <= tariff.tier1.limit) { // kwh <= 1500, all excess is in Tier 1
+                if (kwh <= tariff.tier1.limit) { // kwh <= 1500
                     taxableEnergyCharge = excessKwh * tariff.tier1.energy_charge;
-                } else { // kwh > 1500, excess spans Tier 1 and Tier 2
-                    const tier1Limit = tariff.tier1.limit;
-                    const kwhInTier1Above600 = tier1Limit - 600;
-                    const kwhInTier2 = kwh - tier1Limit;
-                    
-                    taxableEnergyCharge = (kwhInTier1Above600 * tariff.tier1.energy_charge) + (kwhInTier2 * tariff.tier2.energy_charge);
+                } else { // kwh > 1500
+                    taxableEnergyCharge = excessKwh * tariff.tier2.energy_charge;
                 }
                 serviceTax = (taxableEnergyCharge / 100) * 0.08;
             }
@@ -902,18 +897,8 @@
                 energyCharge = (peakKwh * tariff.tier1.energy_charge_peak) + 
                               (offPeakKwh * tariff.tier1.energy_charge_off_peak);
             } else {
-                // Calculate tier 1 portion
-                const tier1Peak = Math.min(peakKwh, tariff.tier1.limit);
-                const tier1OffPeak = Math.min(offPeakKwh, tariff.tier1.limit - tier1Peak);
-                
-                // Calculate tier 2 portion
-                const tier2Peak = peakKwh - tier1Peak;
-                const tier2OffPeak = offPeakKwh - tier1OffPeak;
-                
-                energyCharge = (tier1Peak * tariff.tier1.energy_charge_peak) +
-                              (tier1OffPeak * tariff.tier1.energy_charge_off_peak) +
-                              (tier2Peak * tariff.tier2.energy_charge_peak) +
-                              (tier2OffPeak * tariff.tier2.energy_charge_off_peak);
+                energyCharge = (peakKwh * tariff.tier2.energy_charge_peak) +
+                              (offPeakKwh * tariff.tier2.energy_charge_off_peak);
             }
 
             const capacityCharge = totalKwh * (totalKwh <= tariff.tier1.limit ? tariff.tier1.capacity_charge : tariff.tier2.capacity_charge);
@@ -927,18 +912,21 @@
             // Service Tax calculation: 8% on the energy charge for consumption above 600 kWh
             let serviceTax = 0;
             if (totalKwh > 600) {
-                // Total energy charge is already calculated in 'energyCharge' (in sen)
-                // Now, calculate energy charge for the first 600 kWh to subtract it.
-                // The first 600 kWh are within tier 1.
                 const peakRatio = totalKwh > 0 ? peakKwh / totalKwh : 0;
+                const excessKwh = totalKwh - 600;
                 
-                const first600_peakKwh = 600 * peakRatio;
-                const first600_offPeakKwh = 600 * (1 - peakRatio);
+                const excess_peakKwh = excessKwh * peakRatio;
+                const excess_offPeakKwh = excessKwh * (1 - peakRatio);
                 
-                const energyChargeFor600kwh = (first600_peakKwh * tariff.tier1.energy_charge_peak) +
-                                             (first600_offPeakKwh * tariff.tier1.energy_charge_off_peak);
+                let taxableEnergyCharge = 0;
+                if (totalKwh <= tariff.tier1.limit) { // totalKwh <= 1500
+                    taxableEnergyCharge = (excess_peakKwh * tariff.tier1.energy_charge_peak) +
+                                          (excess_offPeakKwh * tariff.tier1.energy_charge_off_peak);
+                } else { // totalKwh > 1500
+                     taxableEnergyCharge = (excess_peakKwh * tariff.tier2.energy_charge_peak) +
+                                           (excess_offPeakKwh * tariff.tier2.energy_charge_off_peak);
+                }
                 
-                const taxableEnergyCharge = energyCharge - energyChargeFor600kwh;
                 serviceTax = (taxableEnergyCharge / 100) * 0.08;
             }
             
