@@ -687,11 +687,16 @@
             if (!kwh || kwh <= 0) return null;
 
             if (tariffType === 'general') {
-                const bill = calculateGeneralTariff(kwh);
+                const newBill = calculateGeneralTariff(kwh);
+                const oldBill = calculateOldTariff(kwh);
                 return {
-                    type: 'manual_general',
-                    consumption: kwh,
-                    bill: bill
+                    type: 'manual_general_comparison',
+                    monthlyTotals: {
+                        totalKwh: kwh,
+                        oldBill: oldBill,
+                        newBill: newBill,
+                        savings: oldBill.total - newBill.total
+                    }
                 };
             } else {
                 const peakPercentage = parseFloat(document.getElementById('peak-percentage').value) || 40;
@@ -1052,9 +1057,9 @@
             const resultsDiv = document.getElementById('results');
             
             switch (results.type) {
-                case 'manual_general':
-                    resultsDiv.innerHTML = generateManualGeneralResults(results);
-                    setupManualGeneralToggle(results);
+                case 'manual_general_comparison':
+                    resultsDiv.innerHTML = generateManualGeneralComparisonResults(results);
+                    setupMonthlyComparisonToggle(results);
                     break;
                 case 'manual_tou':
                     resultsDiv.innerHTML = generateManualTouResults(results);
@@ -1073,62 +1078,84 @@
             resultsDiv.classList.add('show');
         }
 
-        function generateManualGeneralResults(results) {
-            const bill = results.bill;
+        function generateManualGeneralComparisonResults(results) {
+            const newBill = results.monthlyTotals.newBill;
+            const totalSavings = results.monthlyTotals.savings;
+            const savingsClass = totalSavings > 0 ? 'savings' : 'increase';
+            const savingsText = totalSavings > 0 ? 'Total Monthly Savings' : 'Additional Monthly Cost';
+            
             return `
                 <div class="result-card">
                     <div class="result-title">
-                        💡 Your Monthly Bill - Domestic General Tariff
+                        📊 Monthly Bill Comparison - Old vs New Tariff Structure
                     </div>
                     
                     <div class="breakdown-grid">
                         <div class="breakdown-item">
-                            <div class="breakdown-label">Consumption</div>
-                            <div class="breakdown-value">${results.consumption.toFixed(1)} kWh</div>
+                            <div class="breakdown-label">Monthly Consumption</div>
+                            <div class="breakdown-value">${results.monthlyTotals.totalKwh.toFixed(1)} kWh</div>
                         </div>
                         <div class="breakdown-item">
-                            <div class="breakdown-label">Energy Charge</div>
-                            <div class="breakdown-value">RM ${bill.energyCharge.toFixed(2)}</div>
+                            <div class="breakdown-label">Old Tariff (Progressive)</div>
+                            <div class="breakdown-value">RM ${results.monthlyTotals.oldBill.total.toFixed(2)}</div>
                         </div>
                         <div class="breakdown-item">
-                            <div class="breakdown-label">Capacity Charge</div>
-                            <div class="breakdown-value">RM ${bill.capacityCharge.toFixed(2)}</div>
-                        </div>
-                        <div class="breakdown-item">
-                            <div class="breakdown-label">Network Charge</div>
-                            <div class="breakdown-value">RM ${bill.networkCharge.toFixed(2)}</div>
-                        </div>
-                        <div class="breakdown-item">
-                            <div class="breakdown-label">Retail Charge</div>
-                            <div class="breakdown-value">RM ${bill.retailCharge.toFixed(2)}</div>
-                        </div>
-                        <div class="breakdown-item">
-                            <div class="breakdown-label">EE Incentive</div>
-                            <div class="breakdown-value ${bill.eeIncentive < 0 ? 'savings' : ''}" id="manual-ee-incentive">RM ${bill.eeIncentive.toFixed(2)}</div>
-                        </div>
-                        <div class="breakdown-item">
-                            <div class="breakdown-label">RE Fund (1.6%)</div>
-                            <div class="breakdown-value" id="manual-re-fund">RM ${bill.renewableEnergyFund.toFixed(2)}</div>
-                        </div>
-                        <div class="breakdown-item">
-                            <div class="breakdown-label">Service Tax (8% on excess)</div>
-                            <div class="breakdown-value" id="manual-service-tax">RM ${bill.serviceTax.toFixed(2)}</div>
+                            <div class="breakdown-label">New Tariff (2-Tier General)</div>
+                            <div class="breakdown-value" id="new-tariff-display">RM ${newBill.total.toFixed(2)}</div>
                         </div>
                     </div>
                     
-                    <div style="margin-top: 20px; padding: 15px; background: rgba(59, 130, 246, 0.1); border-radius: 8px;">
-                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-                            <input type="checkbox" id="manual-ee-toggle" checked style="transform: scale(1.2);">
-                            <span style="font-size: 0.9rem; color: #1e40af;">
-                                <strong>Include Energy Efficiency Incentive</strong><br>
-                                <small style="color: #64748b;">* EE Incentive rates are estimated. Uncheck to see the bill without this incentive. For official rates, please refer to TNB.</small>
-                            </span>
-                        </label>
+                    <div class="result-card" style="background: #f8fafc; margin: 20px 0;">
+                        <h4 style="margin-bottom: 15px; color: #374151;">New Tariff Bill Breakdown</h4>
+                        
+                        <div class="breakdown-grid">
+                            <div class="breakdown-item">
+                                <div class="breakdown-label">Energy Charge</div>
+                                <div class="breakdown-value" id="new-energy-charge">RM ${newBill.energyCharge.toFixed(2)}</div>
+                            </div>
+                            <div class="breakdown-item">
+                                <div class="breakdown-label">Capacity Charge</div>
+                                <div class="breakdown-value" id="new-capacity-charge">RM ${newBill.capacityCharge.toFixed(2)}</div>
+                            </div>
+                            <div class="breakdown-item">
+                                <div class="breakdown-label">Network Charge</div>
+                                <div class="breakdown-value" id="new-network-charge">RM ${newBill.networkCharge.toFixed(2)}</div>
+                            </div>
+                            <div class="breakdown-item">
+                                <div class="breakdown-label">Retail Charge</div>
+                                <div class="breakdown-value" id="new-retail-charge">RM ${newBill.retailCharge.toFixed(2)}</div>
+                            </div>
+                            <div class="breakdown-item">
+                                <div class="breakdown-label">
+                                    EE Incentive (Est.) 
+                                    <span style="font-size: 0.8rem; color: #64748b;">*</span>
+                                </div>
+                                <div class="breakdown-value ${newBill.eeIncentive < 0 ? 'savings' : ''}" id="new-ee-incentive">RM ${newBill.eeIncentive.toFixed(2)}</div>
+                            </div>
+                            <div class="breakdown-item">
+                                <div class="breakdown-label">RE Fund (1.6%)</div>
+                                <div class="breakdown-value" id="new-re-fund">RM ${newBill.renewableEnergyFund.toFixed(2)}</div>
+                            </div>
+                            <div class="breakdown-item">
+                                <div class="breakdown-label">Service Tax (8%)</div>
+                                <div class="breakdown-value" id="new-service-tax">RM ${newBill.serviceTax.toFixed(2)}</div>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-top: 20px; padding: 15px; background: rgba(59, 130, 246, 0.1); border-radius: 8px;">
+                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                                <input type="checkbox" id="exclude-ee-toggle" checked style="transform: scale(1.2);">
+                                <span style="font-size: 0.9rem; color: #1e40af;">
+                                    <strong>Include Energy Efficiency Incentive</strong><br>
+                                    <small style="color: #64748b;">* EE Incentive rates are estimated based on the new tariff structure and are subject to change. Uncheck to see the bill without this incentive. For official rates, please refer to TNB.</small>
+                                </span>
+                            </label>
+                        </div>
                     </div>
-
-                    <div class="total-amount" id="manual-total-amount">
-                        <div class="total-label">Total Monthly Bill</div>
-                        <div class="total-value">RM ${bill.total.toFixed(2)}</div>
+                    
+                    <div class="total-amount" id="savings-display">
+                        <div class="total-label">${savingsText}</div>
+                        <div class="total-value ${savingsClass}">RM ${Math.abs(totalSavings).toFixed(2)}</div>
                     </div>
                 </div>
             `;
@@ -1186,31 +1213,6 @@
                     </div>
                 </div>
             `;
-        }
-
-        function setupManualGeneralToggle(results) {
-            const toggle = document.getElementById('manual-ee-toggle');
-            if (!toggle) return;
-
-            toggle.addEventListener('change', function() {
-                const includeEE = this.checked;
-                const kwh = results.consumption;
-
-                const newBill = calculateGeneralTariff(kwh, { includeEE: includeEE });
-
-                const eeDisplay = document.getElementById('manual-ee-incentive');
-                eeDisplay.textContent = `RM ${newBill.eeIncentive.toFixed(2)}`;
-                eeDisplay.className = newBill.eeIncentive < 0 ? 'breakdown-value savings' : 'breakdown-value';
-
-                document.getElementById('manual-re-fund').textContent = `RM ${newBill.renewableEnergyFund.toFixed(2)}`;
-                document.getElementById('manual-service-tax').textContent = `RM ${newBill.serviceTax.toFixed(2)}`;
-                
-                const totalAmountDiv = document.getElementById('manual-total-amount');
-                totalAmountDiv.innerHTML = `
-                    <div class="total-label">Total Monthly Bill</div>
-                    <div class="total-value">RM ${newBill.total.toFixed(2)}</div>
-                `;
-            });
         }
 
         function setupManualTouToggle(results) {
