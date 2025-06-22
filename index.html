@@ -321,6 +321,16 @@
             font-weight: 600;
         }
 
+        .warning-banner {
+            background: rgba(251, 191, 36, 0.1);
+            border: 1px solid rgba(251, 191, 36, 0.2);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            font-size: 0.9rem;
+            color: #b45309;
+        }
+
         .info-banner {
             background: rgba(59, 130, 246, 0.1);
             border: 1px solid rgba(59, 130, 246, 0.2);
@@ -961,7 +971,7 @@
             return 0;
         }
 
-        function calculateOldTariff(kwh) {
+        function calculateOldTariff(kwh, options = { includeICPT: true }) {
             // Progressive old tariff calculation (Tariff A - Domestic Tariff)
             let totalCost = 0;
             let remainingKwh = kwh;
@@ -998,9 +1008,16 @@
             if (remainingKwh > 0) {
                 totalCost += remainingKwh * 57.10;
             }
+
+            // ICPT Rebate: 2 sen/kWh for usage < 600 kWh
+            let icptRebateInSen = 0;
+            if (kwh < 600 && options.includeICPT) {
+                icptRebateInSen = kwh * 2.0;
+            }
             
             // Convert from sen to RM
-            const energyCost = totalCost / 100;
+            const energyCostInSen = totalCost;
+            const energyCost = (energyCostInSen - icptRebateInSen) / 100;
             
             // Service Tax calculation (8% on consumption above 600 kWh)
             // Based on TNB's calculation: ST applies to the portion above 600 kWh
@@ -1034,8 +1051,10 @@
                 kwh: kwh,
                 energyCost: energyCost,
                 serviceTax: serviceTax,
+                icptRebate: -icptRebateInSen / 100,
                 breakdown: {
-                    baseEnergyCharge: energyCost,
+                    baseEnergyCharge: energyCostInSen / 100,
+                    icptRebate: -icptRebateInSen / 100,
                     serviceTax: serviceTax
                 }
             };
@@ -1047,7 +1066,7 @@
             switch (results.type) {
                 case 'manual_general_comparison':
                     resultsDiv.innerHTML = generateManualGeneralComparisonResults(results);
-                    setupMonthlyComparisonToggle(results);
+                    setupIncentiveToggle(results);
                     break;
                 case 'manual_tou':
                     resultsDiv.innerHTML = generateManualTouResults(results);
@@ -1055,7 +1074,7 @@
                     break;
                 case 'monthly_comparison':
                     resultsDiv.innerHTML = generateMonthlyComparisonResults(results);
-                    setupMonthlyComparisonToggle(results);
+                    setupIncentiveToggle(results);
                     break;
                 case 'daily_comparison':
                     resultsDiv.innerHTML = generateDailyComparisonResults(results);
@@ -1068,10 +1087,45 @@
 
         function generateManualGeneralComparisonResults(results) {
             const newBill = results.monthlyTotals.newBill;
-            const totalSavings = results.monthlyTotals.savings;
+            const oldBill = results.monthlyTotals.oldBill;
+            const totalKwh = results.monthlyTotals.totalKwh;
+            const totalSavings = oldBill.total - newBill.total;
             const savingsClass = totalSavings > 0 ? 'savings' : 'increase';
             const savingsText = totalSavings > 0 ? 'Total Monthly Savings' : 'Additional Monthly Cost';
             
+            let toggleHtml = '';
+            let disclaimerHtml = '';
+
+            if (totalKwh < 600) {
+                toggleHtml = `
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                        <input type="checkbox" id="incentive-toggle" checked style="transform: scale(1.2);">
+                        <span style="font-size: 0.9rem; color: #1e40af;">
+                            <strong>Include Incentives (EEI & ICPT)</strong><br>
+                            <small style="color: #64748b;">* To ensure a fair comparison, this toggles both the new tariff's EE Incentive and the old tariff's 2 sen/kWh ICPT rebate. EE Incentive rates are estimated. Uncheck to see the bill without both incentives.</small>
+                        </span>
+                    </label>
+                `;
+            } else {
+                toggleHtml = `
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                        <input type="checkbox" id="incentive-toggle" checked style="transform: scale(1.2);">
+                        <span style="font-size: 0.9rem; color: #1e40af;">
+                            <strong>Include Energy Efficiency Incentive</strong><br>
+                            <small style="color: #64748b;">* EE Incentive rates are estimated. Uncheck to see the bill without this incentive.</small>
+                        </span>
+                    </label>
+                `;
+            }
+
+            if (totalKwh > 1500) {
+                disclaimerHtml = `
+                    <div class="warning-banner">
+                        <strong>Note on Other Charges:</strong> Old tariff calculations exclude ICPT surcharges. New tariff calculations do not include potential future adjustments (e.g., AFA). Please keep these factors in mind.
+                    </div>
+                `;
+            }
+
             return `
                 <div class="result-card">
                     <div class="result-title">
@@ -1081,11 +1135,11 @@
                     <div class="breakdown-grid">
                         <div class="breakdown-item">
                             <div class="breakdown-label">Monthly Consumption</div>
-                            <div class="breakdown-value">${results.monthlyTotals.totalKwh.toFixed(1)} kWh</div>
+                            <div class="breakdown-value">${totalKwh.toFixed(1)} kWh</div>
                         </div>
                         <div class="breakdown-item">
                             <div class="breakdown-label">Old Tariff (Progressive)</div>
-                            <div class="breakdown-value">RM ${results.monthlyTotals.oldBill.total.toFixed(2)}</div>
+                            <div class="breakdown-value" id="old-tariff-display">RM ${oldBill.total.toFixed(2)}</div>
                         </div>
                         <div class="breakdown-item">
                             <div class="breakdown-label">New Tariff (2-Tier General)</div>
@@ -1131,15 +1185,11 @@
                         </div>
                         
                         <div style="margin-top: 20px; padding: 15px; background: rgba(59, 130, 246, 0.1); border-radius: 8px;">
-                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-                                <input type="checkbox" id="exclude-ee-toggle" checked style="transform: scale(1.2);">
-                                <span style="font-size: 0.9rem; color: #1e40af;">
-                                    <strong>Include Energy Efficiency Incentive</strong><br>
-                                    <small style="color: #64748b;">* EE Incentive rates are estimated based on the new tariff structure and are subject to change. Uncheck to see the bill without this incentive. For official rates, please refer to TNB.</small>
-                                </span>
-                            </label>
+                            ${toggleHtml}
                         </div>
                     </div>
+                    
+                    ${disclaimerHtml}
                     
                     <div class="total-amount" id="savings-display">
                         <div class="total-label">${savingsText}</div>
@@ -1153,6 +1203,16 @@
             const savings = results.savings;
             const savingsClass = savings > 0 ? 'savings' : 'increase';
             const savingsText = savings > 0 ? 'Savings' : 'Additional Cost';
+            const totalKwh = results.consumption;
+            let disclaimerHtml = '';
+
+            if (totalKwh > 1500) {
+                disclaimerHtml = `
+                    <div class="warning-banner">
+                        <strong>Note on Other Charges:</strong> New tariff calculations do not include potential future adjustments (e.g., AFA). Please keep these factors in mind.
+                    </div>
+                `;
+            }
             
             return `
                 <div class="result-card">
@@ -1195,6 +1255,8 @@
                         </label>
                     </div>
                     
+                    ${disclaimerHtml}
+                    
                     <div class="total-amount" id="manual-tou-savings">
                         <div class="total-label">${savingsText} with ToU Tariff</div>
                         <div class="total-value ${savingsClass}">RM ${Math.abs(savings).toFixed(2)}</div>
@@ -1231,17 +1293,20 @@
             });
         }
 
-        function setupMonthlyComparisonToggle(results) {
-            const toggle = document.getElementById('exclude-ee-toggle');
+        function setupIncentiveToggle(results) {
+            const toggle = document.getElementById('incentive-toggle');
             if (!toggle) return;
 
             toggle.addEventListener('change', function() {
-                const includeEE = this.checked;
+                const includeIncentives = this.checked;
                 const totalKwh = results.monthlyTotals.totalKwh;
-                const oldBillTotal = results.monthlyTotals.oldBill.total;
+                
+                // Recalculate old bill
+                const oldBill = calculateOldTariff(totalKwh, { includeICPT: includeIncentives });
+                document.getElementById('old-tariff-display').textContent = `RM ${oldBill.total.toFixed(2)}`;
 
                 // Recalculate the new bill based on the toggle state
-                const newBill = calculateGeneralTariff(totalKwh, { includeEE });
+                const newBill = calculateGeneralTariff(totalKwh, { includeEE: includeIncentives });
 
                 // Update the display with new values
                 document.getElementById('new-tariff-display').textContent = `RM ${newBill.total.toFixed(2)}`;
@@ -1258,7 +1323,7 @@
                 document.getElementById('new-service-tax').textContent = `RM ${newBill.serviceTax.toFixed(2)}`;
 
                 // Update total savings
-                const savings = oldBillTotal - newBill.total;
+                const savings = oldBill.total - newBill.total;
                 const savingsClass = savings > 0 ? 'savings' : 'increase';
                 const savingsText = savings > 0 ? 'Total Monthly Savings' : 'Additional Monthly Cost';
                 const savingsDisplay = document.getElementById('savings-display');
@@ -1287,10 +1352,45 @@
 
             // Initial calculation with EE incentive
             const newBill = results.monthlyTotals.newBill;
+            const oldBill = results.monthlyTotals.oldBill;
+            const totalKwh = results.monthlyTotals.totalKwh;
             const totalSavings = results.monthlyTotals.savings;
             const savingsClass = totalSavings > 0 ? 'savings' : 'increase';
             const savingsText = totalSavings > 0 ? 'Total Monthly Savings' : 'Additional Monthly Cost';
             
+            let toggleHtml = '';
+            let disclaimerHtml = '';
+
+            if (totalKwh < 600) {
+                toggleHtml = `
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                        <input type="checkbox" id="incentive-toggle" checked style="transform: scale(1.2);">
+                        <span style="font-size: 0.9rem; color: #1e40af;">
+                            <strong>Include Incentives (EEI & ICPT)</strong><br>
+                            <small style="color: #64748b;">* To ensure a fair comparison, this toggles both the new tariff's EE Incentive and the old tariff's 2 sen/kWh ICPT rebate. EE Incentive rates are estimated. Uncheck to see the bill without both incentives.</small>
+                        </span>
+                    </label>
+                `;
+            } else {
+                toggleHtml = `
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                        <input type="checkbox" id="incentive-toggle" checked style="transform: scale(1.2);">
+                        <span style="font-size: 0.9rem; color: #1e40af;">
+                            <strong>Include Energy Efficiency Incentive</strong><br>
+                            <small style="color: #64748b;">* EE Incentive rates are estimated. Uncheck to see the bill without this incentive.</small>
+                        </span>
+                    </label>
+                `;
+            }
+
+            if (totalKwh > 1500) {
+                disclaimerHtml = `
+                    <div class="warning-banner">
+                        <strong>Note on Other Charges:</strong> Old tariff calculations exclude ICPT surcharges. New tariff calculations do not include potential future adjustments (e.g., AFA). Please keep these factors in mind.
+                    </div>
+                `;
+            }
+
             return `
                 <div class="result-card">
                     <div class="result-title">
@@ -1300,11 +1400,11 @@
                     <div class="breakdown-grid">
                         <div class="breakdown-item">
                             <div class="breakdown-label">Total 30-Day Usage</div>
-                            <div class="breakdown-value">${results.monthlyTotals.totalKwh.toFixed(1)} kWh</div>
+                            <div class="breakdown-value">${totalKwh.toFixed(1)} kWh</div>
                         </div>
                         <div class="breakdown-item">
                             <div class="breakdown-label">Old Tariff (Progressive)</div>
-                            <div class="breakdown-value">RM ${results.monthlyTotals.oldBill.total.toFixed(2)}</div>
+                            <div class="breakdown-value" id="old-tariff-display">RM ${oldBill.total.toFixed(2)}</div>
                         </div>
                         <div class="breakdown-item">
                             <div class="breakdown-label">New Tariff (2-Tier)</div>
@@ -1350,15 +1450,11 @@
                         </div>
                         
                         <div style="margin-top: 20px; padding: 15px; background: rgba(59, 130, 246, 0.1); border-radius: 8px;">
-                            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-                                <input type="checkbox" id="exclude-ee-toggle" checked style="transform: scale(1.2);">
-                                <span style="font-size: 0.9rem; color: #1e40af;">
-                                    <strong>Include Energy Efficiency Incentive</strong><br>
-                                    <small style="color: #64748b;">* EE Incentive rates are estimated based on the new tariff structure and are subject to change. Uncheck to see the bill without this incentive. For official rates, please refer to TNB.</small>
-                                </span>
-                            </label>
+                           ${toggleHtml}
                         </div>
                     </div>
+                    
+                    ${disclaimerHtml}
                     
                     <div class="total-amount" id="savings-display">
                         <div class="total-label">${savingsText}</div>
@@ -1396,6 +1492,16 @@
             const savings = monthlyTotals.savings;
             const savingsClass = savings > 0 ? 'savings' : 'increase';
             const savingsText = savings > 0 ? 'Savings' : 'Additional Cost';
+            const totalKwh = monthlyTotals.totalKwh;
+            let disclaimerHtml = '';
+
+            if (totalKwh > 1500) {
+                disclaimerHtml = `
+                    <div class="warning-banner">
+                        <strong>Note on Other Charges:</strong> New tariff calculations do not include potential future adjustments (e.g., AFA). Please keep these factors in mind.
+                    </div>
+                `;
+            }
 
             return `
                 <div class="result-card">
@@ -1450,6 +1556,8 @@
                             </span>
                         </label>
                     </div>
+
+                    ${disclaimerHtml}
 
                     <div class="total-amount" id="daily-savings-display">
                         <div class="total-label">${savingsText} with ToU Tariff</div>
